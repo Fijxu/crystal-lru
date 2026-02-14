@@ -1,0 +1,13 @@
+name: lru
+version: 1.0.0
+
+authors:
+  - Fijxu <fijxu@nadeko.net>
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+
+crystal: '>= 1.19.1'
+
+license: MIT
