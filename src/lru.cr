@@ -2,7 +2,7 @@ require "log"
 
 # A simple LRU Cache to store items of whatever type `T`
 class LRUCache(T)
-  VERSION = "1.0.0"
+  VERSION = "1.0.1"
   Log     = ::Log.for(self)
 
   struct Item(T)
@@ -62,7 +62,7 @@ class LRUCache(T)
   #
   # pp cache.get("key") # => "value"
   # ```
-  def set(key : String, value : T, expire_time : Int64? = nil) : Nil
+  def set(key : String, value : T, expire_time : UInt64? = nil) : Nil
     expire_time ? (expires_at = Time.utc.to_unix + expire_time) : (expires_at = nil)
     item = Item(T).new(value, expires_at)
     self[key] = item
