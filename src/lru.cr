@@ -2,7 +2,7 @@ require "log"
 
 # A simple LRU Cache to store items of whatever type `T`
 class LRUCache(T)
-  VERSION = "1.0.1"
+  VERSION = "1.0.2"
   Log     = ::Log.for(self)
 
   struct Item(T)
@@ -12,11 +12,36 @@ class LRUCache(T)
     end
   end
 
+  # Event types for the event listener
+  enum EventType
+    # A new key is set
+    Set
+    # A key is retrieved
+    Get
+    # A key is deleted
+    Del
+    # A key expired
+    Exp
+  end
+
+  # Event struct containing the key related to it's `EventType`
+  struct Event
+    # The key of the item that was handled by the LRU cache.
+    getter key : String
+    # The event type that got fired.
+    getter event_type : EventType
+
+    def initialize(@key, @event_type)
+    end
+  end
+
   # Gets the max amount of items the LRU cache can hold.
   getter max_size : (Int64 | Int32)
   @clean_interval : Time::Span?
   @lru = {} of String => Item(T)
   @access = [] of String
+  @events = Channel(Event).new
+  @events_enabled = false
 
   # Creates a new `LRUCache` with the given `max_size` and `clean_interval`
   def initialize(
@@ -45,10 +70,40 @@ class LRUCache(T)
       if expires_at = item.expires_at
         if expires_at < current_time
           self.del(key)
+          self.send_event(key, EventType::Exp)
           Log.trace &.emit("item '#{key}' expired")
         end
       end
     end
+  end
+
+  # Define a callback for when a new event is received.
+  #
+  # ```
+  # cache = LRUCache(String).new(5)
+  #
+  # cache.on_event do |e|
+  #   puts e.key
+  #   puts e.event_type
+  # end
+  # ```
+  def on_event(&block : Event ->)
+    @events_enabled = true
+    spawn do
+      loop do
+        event = @events.receive
+        block.call(event)
+      end
+    end
+  end
+
+  # Sends events to the event channel, it will only send events if `on_event`
+  # was called.
+  private def send_event(key : String, event_type : EventType)
+    return if !@events_enabled
+    Log.trace &.emit("event sent", key: key, event_type: event_type.to_s)
+    event = Event.new(key, event_type)
+    @events.send(event)
   end
 
   # Sets a item of the desired Type `T` into the LRU Cache.
@@ -66,6 +121,7 @@ class LRUCache(T)
     expire_time ? (expires_at = Time.utc.to_unix + expire_time) : (expires_at = nil)
     item = Item(T).new(value, expires_at)
     self[key] = item
+    self.send_event(key, EventType::Set)
     Log.debug &.emit("inserted item '#{key}'")
   end
 
@@ -83,6 +139,7 @@ class LRUCache(T)
   # ```
   def del(key : String) : Nil
     self.delete(key)
+    self.send_event(key, EventType::Del)
     Log.debug &.emit("deleted item '#{key}'")
   end
 
@@ -97,6 +154,7 @@ class LRUCache(T)
   # ```
   def get(key : String) : T?
     cached = self[key]
+    self.send_event(key, EventType::Get)
     if cached
       Log.debug &.emit("retrieved item '#{key}'")
       cached.value

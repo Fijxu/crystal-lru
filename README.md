@@ -27,6 +27,12 @@ clean_interval = 1.seconds
 
 cache = LRUCache(String).new(max_size, clean_interval)
 
+# Listen to cache events
+cache.on_event do |event|
+  puts event.key
+  puts event.event_type
+end
+
 # Set item to the cache
 cache.set("key", "value", 5)
 cache.set("key2", "value2")
