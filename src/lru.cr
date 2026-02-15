@@ -2,7 +2,7 @@ require "log"
 
 # A simple LRU Cache to store items of whatever type `T`
 class LRUCache(T)
-  VERSION = "1.0.2"
+  VERSION = "1.0.3"
   Log     = ::Log.for(self)
 
   struct Item(T)
@@ -71,7 +71,7 @@ class LRUCache(T)
         if expires_at < current_time
           self.del(key)
           self.send_event(key, EventType::Exp)
-          Log.trace &.emit("item '#{key}' expired")
+          Log.trace &.emit("item expired", key: key)
         end
       end
     end
@@ -122,7 +122,7 @@ class LRUCache(T)
     item = Item(T).new(value, expires_at)
     self[key] = item
     self.send_event(key, EventType::Set)
-    Log.debug &.emit("inserted item '#{key}'")
+    Log.debug &.emit("inserted item", key: key)
   end
 
   # Deletes a item from the LRU Cache.
@@ -140,7 +140,7 @@ class LRUCache(T)
   def del(key : String) : Nil
     self.delete(key)
     self.send_event(key, EventType::Del)
-    Log.debug &.emit("deleted item '#{key}'")
+    Log.debug &.emit("deleted item", key: key)
   end
 
   # Gets the item associated with the `key`
@@ -156,7 +156,7 @@ class LRUCache(T)
     cached = self[key]
     self.send_event(key, EventType::Get)
     if cached
-      Log.debug &.emit("retrieved item '#{key}'")
+      Log.debug &.emit("retrieved item", key: key)
       cached.value
     else
       nil
