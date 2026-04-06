@@ -2,7 +2,7 @@ require "log"
 
 # A simple LRU Cache to store items of whatever type `T`
 class LRUCache(T)
-  VERSION = "1.0.4"
+  VERSION = "1.0.5"
   Log     = ::Log.for(self)
 
   struct Item(T)
@@ -46,7 +46,7 @@ class LRUCache(T)
   # Creates a new `LRUCache` with the given `max_size` and `clean_interval`
   def initialize(
     @max_size,
-    @clean_interval = 1.seconds,
+    @clean_interval = nil,
   )
     if i = @clean_interval
       Log.debug &.emit("clean interval set to '#{clean_interval}'")
